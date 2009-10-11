@@ -97,6 +97,9 @@
 #endif
 
 
+#define lengthof(m_array) (sizeof(m_array) / sizeof(m_array[0]))
+
+
 namespace enblend {
 
 /** The different image overlap classifications. */

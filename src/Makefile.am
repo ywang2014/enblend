@@ -11,7 +11,8 @@ enblend_SOURCES = anneal.h assemble.h blend.h bounds.h \
                   common.h enblend.h enblend.cc fixmath.h \
                   float_cast.h global.h gpu.cc gpu.h mask.h \
                   nearest.h numerictraits.h openmp.h path.h pyramid.h \
-                  filenameparse.h filenameparse.cc
+                  filenameparse.h filenameparse.cc \
+                  self_test.h self_test.cc
 enblend_LDFLAGS = $(AM_LDFLAGS) $(OPENGL_CFLAGS)
 enblend_LDADD = vigra_impex/libvigra_impex.a $(OPENGL_LIBS) @EXTRA_LIBS@
 enblend_CXXFLAGS = $(AM_CXXFLAGS) $(OPENGL_CFLAGS) \
@@ -21,7 +22,8 @@ enblend_CXXFLAGS = $(AM_CXXFLAGS) $(OPENGL_CFLAGS) \
 enfuse_SOURCES = assemble.h blend.h bounds.h common.h \
                  enfuse.h enfuse.cc fixmath.h float_cast.h \
                  global.h mga.h numerictraits.h openmp.h pyramid.h \
-                 filenameparse.h filenameparse.cc
+                 filenameparse.h filenameparse.cc \
+                 self_test.h self_test.cc
 enfuse_LDFLAGS = $(AM_LDFLAGS)
 enfuse_LDADD = vigra_impex/libvigra_impex.a @EXTRA_LIBS@
 enfuse_CXXFLAGS = $(AM_CXXFLAGS) \

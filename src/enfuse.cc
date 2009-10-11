@@ -82,6 +82,7 @@ extern "C" int optind;
 
 #include "global.h"
 #include "signature.h"
+#include "self_test.h"
 
 // Globals
 const std::string command("enfuse");
@@ -1256,6 +1257,12 @@ int main(int argc, char** argv)
     // List of input files.
     list<char*> inputFileNameList;
     list<char*>::iterator inputFileNameIterator;
+
+    if (!getopt_long_works_ok())
+    {
+        cerr << command << ": cannot reliably parse command line; giving up\n";
+        exit(1);
+    }
 
     int optind;
     try {
