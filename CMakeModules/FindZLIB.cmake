@@ -23,15 +23,15 @@ ENDIF (ZLIB_INCLUDE_DIR)
 FIND_PATH(ZLIB_INCLUDE_DIR zlib.h
   /usr/local/include
   /usr/include
-  ${wxWidgets_ROOT_DIR}/src/zlib
+  ${SOURCE_BASE_DIR}/zlib
 )
 
 include(FindLibraryWithDebug)
 
 find_library_with_debug(ZLIB_LIBRARIES
   WIN32_DEBUG_POSTFIX d
-  NAMES z zlib wxzlib
-  PATHS /usr/lib /usr/local/lib ${wxWidgets_LIB_DIR}
+  NAMES z zlib
+  PATHS /usr/lib /usr/local/lib ${SOURCE_BASE_DIR}/zlib
 )
 
 

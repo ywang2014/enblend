@@ -5,7 +5,12 @@
 #
 
 include(GetPrerequisites)	# get function gp_append_unique()
+IF(WIN32)
+set(DocumentsDirectory "doc")
+ELSE(WIN32)
 set(DocumentsDirectory "doc/enblend")
+ENDIF(WIN32)
+
 set(_docs)
 set(_enblend_Bases auxmac.texi auxmac.tex fdl.texi mask-template-characters.texi helpful-programs.texi
     tuning-memory-usage.texi understanding-masks.texi workflow.texi authors.texi

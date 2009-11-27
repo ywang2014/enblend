@@ -24,13 +24,13 @@ IF (ZLIB_FOUND)
   FIND_PATH(PNG_INCLUDE_DIR png.h
     /usr/local/include
     /usr/include
-    ${wxWidgets_ROOT_DIR}/src/png
+    ${SOURCE_BASE_DIR}/libpng-1.2.40
   )
 
   find_library_with_debug(PNG_LIBRARIES
     WIN32_DEBUG_POSTFIX d
-    NAMES png libpng wxpng
-    PATHS /usr/lib /usr/local/lib ${wxWidgets_LIB_DIR}
+    NAMES png libpng
+    PATHS /usr/lib /usr/local/lib     ${SOURCE_BASE_DIR}/libpng-1.2.40/lib
   )
 
   include(FindPackageHandleStandardArgs)

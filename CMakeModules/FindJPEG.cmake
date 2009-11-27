@@ -17,15 +17,15 @@
 FIND_PATH(JPEG_INCLUDE_DIR jpeglib.h
   /usr/local/include
   /usr/include
-  ${wxWidgets_ROOT_DIR}/src/jpeg
+  ${SOURCE_BASE_DIR}/jpeg-7
 )
 
 include(FindLibraryForCPU)
 
 find_library_for_cpu(JPEG_LIBRARIES
   WIN32_DEBUG_POSTFIX d
-  NAMES jpeg libjpeg wxjpeg
-  PATHS /usr/lib /usr/local/lib ${wxWidgets_LIB_DIR}
+  NAMES jpeg libjpeg
+  PATHS /usr/lib /usr/local/lib ${SOURCE_BASE_DIR}/jpeg-7/lib
 )
 
 

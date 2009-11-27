@@ -86,7 +86,6 @@ IF(WIN32)
   STRING(REGEX REPLACE "(.*)/[^/]+$" "\\1" work "${CMAKE_SOURCE_DIR}")
   # create the cache entry
   SET(SOURCE_BASE_DIR ${work} CACHE FILEPATH "parent dir of hugin source root")
-  SET(wxWidgets_ROOT_DIR ${SOURCE_BASE_DIR}/wxWidgets-2.8.10)
 
   LIST(APPEND CMAKE_PREFIX_PATH ${SOURCE_BASE_DIR})
 ENDIF(WIN32)
@@ -122,37 +121,58 @@ ENDIF(NOT WIN32)
 IF(CMAKE_COMPILER_IS_GNUCXX)
   SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -DNDEBUG -Wall")
   IF(APPLE AND CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION LESS 5)
-      ## Add needed Compiler and Linker flags for OSX
-      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flat_namespace -undefined suppress")
-      SET(CMAKE_CXX_FLAGS "{$CMAKE_CXX_FLAGS} -flat_namespace -undefined suppress")
-      SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flat_namespace -undefined suppress")
-      SET(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -flat_namespace -undefined suppress")
-      SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flat_namespace -undefined suppress")
+    ## Add needed Compiler and Linker flags for OSX
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -flat_namespace -undefined suppress")
+    SET(CMAKE_CXX_FLAGS "{$CMAKE_CXX_FLAGS} -flat_namespace -undefined suppress")
+    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flat_namespace -undefined suppress")
+    SET(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -flat_namespace -undefined suppress")
+    SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -flat_namespace -undefined suppress")
   ENDIF(APPLE AND CMAKE_MAJOR_VERSION EQUAL 2 AND CMAKE_MINOR_VERSION LESS 5)
 ELSEIF(WIN32)
   IF(MSVC)
     # Quiet some compiler noise
     ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
-	ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
+    ADD_DEFINITIONS(-D_SCL_SECURE_NO_WARNINGS)
+    ADD_DEFINITIONS(-D_CRT_NONSTDC_NO_DEPRECATE)
 
-	# Due to the number of templates and the added overhead in .obj files from 64-bit builds
-	# add /bigobj support
-	# details: http://msdn.microsoft.com/en-us/library/ms173499.aspx
+    # Due to the number of templates and the added overhead in .obj files from 64-bit builds
+    # add /bigobj support
+    # details: http://msdn.microsoft.com/en-us/library/ms173499.aspx
     IF(CMAKE_CL_64)
-	  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /bigobj")
-	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-	ENDIF(CMAKE_CL_64)
+      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /bigobj")
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+    ENDIF(CMAKE_CL_64)
 
-	# Maximize speed
-	STRING(REPLACE " /O2 " " /Ox /GL " CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-	STRING(REPLACE " /O2 " " /Ox /GL " CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+    # compile everything for the static C runtime
+    FOREACH(TYPE C CXX)
+      # makefiles use blank configuration
+      FOREACH(CFG "_DEBUG" "_MINSIZEREL" "_RELEASE" "_RELWITHDEBINFO")
+	#MESSAGE("Replacing CMAKE_${TYPE}_FLAGS${CFG}: ${CMAKE_${TYPE}_FLAGS${CFG}}")
+	SET(NEW_FLAGS "${CMAKE_${TYPE}_FLAGS${CFG}}")
+	# fix up static libc flags
+	STRING(REPLACE "/MD" "/MT" NEW_FLAGS "${NEW_FLAGS}")
+	# *FORCE* to override whats already placed into the cache
+	SET(CMAKE_${TYPE}_FLAGS${CFG} "${NEW_FLAGS}" CACHE STRING
+	  "CMAKE_${TYPE}_FLAGS${CFG} (overwritten to ensure static build)" FORCE)
+	#MESSAGE("New       CMAKE_${TYPE}_FLAGS${CFG}: ${CMAKE_${TYPE}_FLAGS${CFG}}")
+      ENDFOREACH(CFG)
+    ENDFOREACH(TYPE)
+    # link only with the static C runtime !! THIS IS A MUST !!
+    SET(NEW_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    # ensure that the flags are not duplicated on subsequent runs
+    STRING(REPLACE " /NODEFAULTLIB:\"MSVCRT.lib\" /NODEFAULTLIB:\"MSVCRTd.lib\" /LTCG /LARGEADDRESSAWARE" "" NEW_FLAGS "${NEW_FLAGS}")
+    # note that flag names (NODEFAULTLIB) etc.) are case sensitive
+    SET( CMAKE_EXE_LINKER_FLAGS
+      "${NEW_FLAGS} /NODEFAULTLIB:\"MSVCRT.lib\" /NODEFAULTLIB:\"MSVCRTd.lib\" /LTCG /LARGEADDRESSAWARE"
+      CACHE STRING "for MSVC" FORCE
+      )
 
-	SET(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /GL")
+    # Maximize speed
+    STRING(REPLACE " /O2 " " /Ox /GL " CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    STRING(REPLACE " /O2 " " /Ox /GL " CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+
+    SET(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /GL")
   ENDIF(MSVC)
-
-  # wxWidgets is required on Windows platforms for the TIFF/JPEG/PNG support
-  FIND_PACKAGE(wxWidgets REQUIRED png jpeg tiff)
-  LIST(APPEND common_libs ${wxWidgets_LIBRARIES})
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 # Required Libraries first
@@ -170,6 +190,8 @@ IF(WIN32)
   include_directories(${STLport_INCLUDE_DIR})
   link_directories(${STLport_LIBRARIES_DIR})
   SET(Boost_USE_STATIC_LIBS ON)
+  # path for getopt library
+  INCLUDE_DIRECTORIES(${TOP_SRC_DIR}/src/win32helpers)
 ENDIF(WIN32)
 
 # Boost headers are required, but filesystem is optional
@@ -267,6 +289,11 @@ IF(ENABLE_IMAGECACHE)
 ENDIF(ENABLE_IMAGECACHE)
 
 IF(ENABLE_GPU)
+  IF(WIN32)
+    IF(NOT GLUT_ROOT_PATH)
+      SET(GLUT_ROOT_PATH ${SOURCE_BASE_DIR}/glut)
+    ENDIF(NOT GLUT_ROOT_PATH)
+  ENDIF(WIN32)
   FIND_PACKAGE(GLUT REQUIRED)
   FIND_PACKAGE(GLEW REQUIRED)
   IF(APPLE)
@@ -358,10 +385,24 @@ if (PERL_FOUND)
     add_subdirectory(doc)
 endif()
 
+# Windows installer packaging related stuff
+# prepare files here...
+IF(WIN32)
+  # install into place in build-dir
+  SET( CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/INSTALL/FILES CACHE FILEPATH "install prefix" FORCE)
+  SET( INSTALL_WIN_FILES AUTHORS ChangeLog COPYING NEWS README VIGRA_LICENSE )
+  INSTALL(FILES ${INSTALL_WIN_FILES} DESTINATION ${CMAKE_INSTALL_PREFIX})
+  # install Eriks droplets
+  SET( DROPLETS_FILES contrib/enfuse_droplet/enfuse_droplet.bat
+    contrib/enfuse_droplet/enfuse_droplet_360.bat contrib/enfuse_droplet/enfuse_droplet_readme.txt
+    contrib/enfuse_droplet/LICENCE.txt)
+  INSTALL(FILES ${DROPLETS_FILES} DESTINATION ${CMAKE_INSTALL_PREFIX}/droplets)
+ELSEIF(WIN32)
 foreach(_manual enblend enfuse)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/${_manual}.1
     DESTINATION "share/man/man1" CONFIGURATIONS Release RelWithDebInfo MinSizeRel)
 endforeach()
+ENDIF(WIN32)
 
 SET(CPACK_PACKAGE_VERSION_MAJOR ${ENBLEND_MAJOR_VERSION})
 SET(CPACK_PACKAGE_VERSION_MINOR ${ENBLEND_MINOR_VERSION})
