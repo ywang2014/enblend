@@ -11,8 +11,9 @@ ELSE(WIN32)
 set(DocumentsDirectory "doc/enblend")
 ENDIF(WIN32)
 
-# this is needed to convert some .gp.in-files
-set(RASTER_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+include(${TOP_SRC_DIR}/doc/macros.cmake)
+set(main_texi_list enblend enfuse)
+
 set(_docs)
 set(_enblend_Bases auxmac.texi auxmac.tex
     fdl.texi
@@ -63,42 +64,14 @@ foreach(_e ${_enfuse_Bases})
   list(APPEND _enfuse_TEXINFOS "${TOP_SRC_DIR}/doc/${_e}")
 endforeach(_e)
 
-macro(copybin _basename)
-  set_source_files_properties(${_basename} GENERATED)
-  if (${ARGV1} MATCHES "DIR")
-    set(cp_command "copy_directory")
-    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${_basename}" DESTINATION ${DocumentsDirectory})
-  else()
-    set(cp_command "copy")
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${_basename}" DESTINATION ${DocumentsDirectory})
-  endif()
-  add_custom_command(
-    OUTPUT ${_basename}
-    COMMAND ${CMAKE_COMMAND} -E ${cp_command} "${TOP_SRC_DIR}/doc/${_basename}" ${_basename}
-    DEPENDS "${TOP_SRC_DIR}/doc/${_basename}"
-    COMMENT "Copy ${TOP_SRC_DIR}/doc/${_basename} ${_basename}"
-    )
-  list(APPEND _docs ${_basename})
-  list(APPEND _depend_gp ${_basename})
-endmacro(copybin)
-
-macro(create_selection _list _ext _destlist)
-  set(${_destlist})		# empty destination list first
-  foreach(_src ${${_list}})
-    if(${_src} MATCHES "^(.+)\\.${_ext}$") #select from the list those with expected extension
-      list(APPEND ${_destlist} ${CMAKE_MATCH_1}) # Add the base name without extension only
-    endif()
-  endforeach(_src)
-endmacro(create_selection)
-
 set(_enblendenfuse_fig_images)
 set(_enblendenfuse_tif_images)
 set(_enblendenfuse_gp_images)
 
-foreach(_cmd "enblend" "enfuse")
-  create_selection(_${_cmd}_Bases "fig" _${_cmd}_fig_images)
-  create_selection(_${_cmd}_Bases "tif" _${_cmd}_tif_images)
-  create_selection(_${_cmd}_Bases "gp\\\\.in" _${_cmd}_gp_images)
+foreach(_cmd ${main_texi_list} )
+  doc_create_selection(_${_cmd}_Bases "fig" _${_cmd}_fig_images)
+  doc_create_selection(_${_cmd}_Bases "tif" _${_cmd}_tif_images)
+  doc_create_selection(_${_cmd}_Bases "gp\\\\.in" _${_cmd}_gp_images)
   set(_${_cmd}_images ${_${_cmd}_fig_images} ${_${_cmd}_tif_images} ${_${_cmd}_gp_images})
   foreach(_i ${_${_cmd}_fig_images})
     gp_append_unique(_enblendenfuse_fig_images ${_i})
@@ -115,74 +88,45 @@ project(doc0)
 
 set(_helpfiles)
 
-#create config.h.texi
-add_custom_command(
-  OUTPUT  "${CMAKE_CURRENT_BINARY_DIR}/config-h.texi"
-  COMMAND ${PERL_EXECUTABLE} "${TOP_SRC_DIR}/doc/define2set.pl"
-  "${CMAKE_BINARY_DIR}/config.h" ">" "${CMAKE_CURRENT_BINARY_DIR}/config-h.texi"
-  DEPENDS "${CMAKE_BINARY_DIR}/config.h"
-  COMMENT "Creating config-h.texi"
-  )
-SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_BINARY_DIR}/config-h.texi" GENERATED)
-list(APPEND _helpfiles "${CMAKE_CURRENT_BINARY_DIR}/config-h.texi")
+#create <build>/config.h.texi
+doc_create_configh_texi(_helpfiles config-h.texi)
 
-# create versenblend.texi and versenfuse.texi
-foreach(_cmd enblend enfuse)
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vers${_cmd}.texi"
-    COMMAND ${PERL_EXECUTABLE} "${TOP_SRC_DIR}/doc/CreateVersTexi.pl" "${TOP_SRC_DIR}/doc/${_cmd}.texi" "${_version_lines}" ${A4} > "${CMAKE_CURRENT_BINARY_DIR}/vers${_cmd}.texi"
-    DEPENDS "${TOP_SRC_DIR}/doc/${_cmd}.texi"
-    COMMENT "perl: Creating vers${_cmd}.texi"
-    )
-  SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_BINARY_DIR}/vers${_cmd}.texi" GENERATED)
-  list(APPEND _helpfiles "${CMAKE_CURRENT_BINARY_DIR}/vers${_cmd}.texi")
+# create <build>/vers*.texi
+foreach(_cmd ${main_texi_list})
+  #message(STATUS "doc_verscopy_file vers${_cmd}.texi")
+  doc_verscopy_file(_helpfiles "vers${_cmd}.texi")
 endforeach(_cmd)
 
-# create varsenblend.texi and varsenfuse.texi
-foreach(_cmd enblend enfuse)
-  set(_depends "${TOP_SRC_DIR}/src/${_cmd}.cc"
-    "${TOP_SRC_DIR}/src/bounds.h" "${TOP_SRC_DIR}/src/common.h"
-    "${TOP_SRC_DIR}/src/global.h")
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vars${_cmd}.texi"
-    COMMAND ${PERL_EXECUTABLE} "${TOP_SRC_DIR}/doc/docstrings" ${_depends} ">" vars${_cmd}.texi
-    DEPENDS ${_depends}
-    COMMENT "perl: creating vars${_cmd}.texi"
-    )
-  SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_BINARY_DIR}/vars${_cmd}.texi" GENERATED)
-  list(APPEND _helpfiles "${CMAKE_CURRENT_BINARY_DIR}/vars${_cmd}.texi")
+# create <build>/vars*.texi
+foreach(_cmd ${main_texi_list})
+  #message(STATUS "doc_varscreate_file ${_cmd}")
+  doc_varscreate_file(_helpfiles ${_cmd})
 endforeach(_cmd)
 
+# %.txt: %.fig
 foreach(_fig ${_enblendenfuse_fig_images})
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_fig}.txt"
-    COMMAND ${PERL_EXECUTABLE} "${TOP_SRC_DIR}/doc/fig2txt.pl" "${TOP_SRC_DIR}/doc/${_fig}.fig" ">" "${CMAKE_CURRENT_BINARY_DIR}/${_fig}.txt"
-    DEPENDS "${TOP_SRC_DIR}/doc/${_fig}.fig"
-    COMMENT "perl: creating ${CMAKE_CURRENT_BINARY_DIR}/${_fig}.txt"
-    )
-  SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_BINARY_DIR}/${_fig}.txt" GENERATED)
-  list(APPEND _helpfiles "${CMAKE_CURRENT_BINARY_DIR}/${_fig}.txt")
+  #message(STATUS "doc_create_txt_from_fig ${_tif}")
+  doc_create_txt_from_fig(_helpfiles ${_fig})
 endforeach(_fig)
 
+# %.gif: %.tif
+# %.png: %.tif
+# %.eps: %.tif
 foreach(_tif ${_enblendenfuse_tif_images})
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_tif}.gif"
-    COMMAND ${IMAGEMAGICK_CONVERT_EXECUTABLE} "${TOP_SRC_DIR}/doc/${_tif}.tif" "${CMAKE_CURRENT_BINARY_DIR}/${_tif}.gif"
-    DEPENDS "${TOP_SRC_DIR}/doc/${_tif}.tif"
-    COMMENT "convert: creating ${CMAKE_CURRENT_BINARY_DIR}/${_tif}.gif"
-    )
-  SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_BINARY_DIR}/${_tif}.gif" GENERATED)
-  list(APPEND _helpfiles "${CMAKE_CURRENT_BINARY_DIR}/${_tif}.gif")
-  
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${_tif}.png"
-    COMMAND ${IMAGEMAGICK_CONVERT_EXECUTABLE} "${TOP_SRC_DIR}/doc/${_tif}.tif" "${CMAKE_CURRENT_BINARY_DIR}/${_tif}.png"
-    DEPENDS "${TOP_SRC_DIR}/doc/${_tif}.tif"
-    COMMENT "convert: creating ${CMAKE_CURRENT_BINARY_DIR}/${_tif}.png"
-    )
-  SET_SOURCE_FILES_PROPERTIES("${CMAKE_CURRENT_BINARY_DIR}/${_tif}.png" GENERATED)
-  list(APPEND _helpfiles "${CMAKE_CURRENT_BINARY_DIR}/${_tif}.png")
+  #message(STATUS "doc_create_tif_images ${_tif}")
+  doc_create_tif_images(_helpfiles ${_tif})
 endforeach(_tif)
+
+# <source>/%.gp.in: <build>/%.gp
+set(srcdir "${TOP_SRC_DIR}/doc")
+set(RASTER_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+foreach(_gp ${_enblendenfuse_gp_images})
+  message(STATUS "Handling ${_gp}.gp.in")
+  # (@srcdir@ and @RASTER_DIR@) will be substituted in *.gp.in
+  doc_create_gp_in_files(_helpfiles ${_gp})
+endforeach()
+
+#message(STATUS "_helpfiles = " ${_helpfiles})
 add_custom_target(doc0 ALL DEPENDS ${_helpfiles})
 
 project(doc1)
@@ -200,32 +144,19 @@ if (NOT DOC OR NOT GNUPLOT_FOUND)
     "${TOP_SRC_DIR}/doc/*.pdf")
   foreach(_cf ${_copy_files})
     if(NOT ${_cf} MATCHES "en(blend|fuse)") # This is done below
-      copybin("${_cf}")
+      doc_copybin(_depend_gp "${_cf}")
+      list(APPEND _docs "${_cf}")
     endif()
   endforeach(_cf)
 else()
   #
-  set(srcdir "${TOP_SRC_DIR}/doc") # (@srcdir@) will be substituted in *.gp.in
   foreach(_gp ${_enblendenfuse_gp_images})
-    configure_file("${TOP_SRC_DIR}/doc/${_gp}.gp.in" "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.gp" @ONLY)
-
-    set(_created "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.txt" "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.png" "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.pdf" "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.eps")
-    #message(STATUS "About to execute ${GNUPLOT_EXECUTABLE} ${_gp}.gp")
-    add_custom_command(
-      OUTPUT ${_created}
-      COMMAND ${GNUPLOT_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.gp"
-      DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${_gp}.gp"
-      COMMENT "gnuplot: Creating ${_created} from ${CMAKE_CURRENT_BINARY_DIR}/${_gp}.gp"
-      )
-    SET_SOURCE_FILES_PROPERTIES(${_created} GENERATED)
-    install(FILES ${_created} DESTINATION ${DocumentsDirectory})
-    #message(STATUS "Generated files ${_created}")
+    doc_create_gp_images(_depend_gp ${_gp})
     list(APPEND _docs ${_created})
-    list(APPEND _depend_gp ${_created})
   endforeach(_gp)
 endif()
-add_custom_target(doc1 ALL DEPENDS ${_depend_gp})
-add_dependencies(doc1 doc0)
+
+add_custom_target(doc1 ALL DEPENDS doc0 ${_depend_gp})
 project(doc2)
 
 # Search for fig2dev and convert some images
@@ -237,27 +168,17 @@ if (${FIG2DEV_EXE} MATCHES "-NOTFOUND")
 else()
   #message(STATUS "_enblendenfuse_fig_images =  ${_enblendenfuse_fig_images}")
   foreach(_img ${_enblendenfuse_fig_images})
-    set(_created "${CMAKE_CURRENT_BINARY_DIR}/${_img}")
-    foreach(_ext gif pdf png)
-      #message(STATUS "will create ${_created}.${_ext}")
-      add_custom_command(
-	OUTPUT "${_created}.${_ext}"
-	COMMAND ${FIG2DEV_EXE} -L ${_ext} "${TOP_SRC_DIR}/doc/${_img}.fig" ">" "${_created}.${_ext}"
-	DEPENDS "${TOP_SRC_DIR}/doc/${_img}.fig"
-	COMMENT "fig2dev: Creating ${_created}.${_ext} from ${TOP_SRC_DIR}/doc/${_img}.fig"
-	)
-      list(APPEND _docs ${_created}.${_ext})
-      list(APPEND _depend_gp ${_created}.${_ext})
+    foreach(_ext eps gif pdf png)
+      doc_create_fig2dev(_depend_gp ${_img} ${_ext})
+      list(APPEND _docs ${_img}.${_ext})
     endforeach(_ext)
-    set_source_files_properties(${_created}.png GENERATED)
     if(NOSPLIT)
-      install(FILES ${_created}.png DESTINATION ${DocumentsDirectory})
+      install(FILES ${_img}.png DESTINATION ${DocumentsDirectory})
     endif(NOSPLIT)
   endforeach(_img)
   set(DOC3:BOOL ${DOC})
 endif()
-add_custom_target(doc2 ALL DEPENDS ${_depend_gp})
-add_dependencies(doc2 doc1)
+add_custom_target(doc2 ALL DEPENDS doc1 ${_depend_gp})
 
 project(doc3)
 # Search for makeinfo command and
@@ -310,29 +231,29 @@ foreach(_f ${tmp_texi})
   endif()
 endforeach()
 
-foreach (_cmd "enblend" "enfuse")
+foreach (_cmd ${main_texi_list})
   set(_created "${CMAKE_CURRENT_BINARY_DIR}/${_cmd}")
   if (NOT DOC3:BOOL OR ${MAKEINFO_EXE} MATCHES "-NOTFOUND" OR ${TEXI2DVI_EXE} MATCHES "-NOTFOUND")
     # there is no makeinfo or no texi2dvi command,
     # this implies insufficient latex installation.
     # Therefore simply copy the data from source tree.
     foreach(_ext "info")
-      copybin("${_cmd}.${_ext}")
-      list(APPEND _docs "${_created}.${_ext}")
+      doc_copybin(_depend_gp "${_cmd}.${_ext}")
+      list(APPEND _docs "${_cmd}.${_ext}" "${_created}.${_ext}")
     endforeach()
     #
     # Disabled, because not part of repo.
     # They would have only been created with "make pdf" or "make html" in source doc directory
     # under automake
     if (EXISTS "${TOP_SRC_DIR}/doc/${_cmd}.pdf" AND NOT IS_DIRECTORY "${TOP_SRC_DIR}/doc/${_cmd}.pdf")
-      copybin("${_cmd}.pdf")
-      list(APPEND _docs "${_created}.pdf")
+      copybin(_depend_gp "${_cmd}.pdf")
+      list(APPEND _docs "${_cmd}.pdf" "${_created}.pdf")
     else()
       message(STATUS "Sorry, but there is no file ${TOP_SRC_DIR}/doc/${_cmd}.pdf to copy. Leave it out")
     endif()
     if (EXISTS "${TOP_SRC_DIR}/doc/${_cmd}.html" AND IS_DIRECTORY "${TOP_SRC_DIR}/doc/${_cmd}.html")
-      copybin("${_cmd}.html" "DIR")
-      list(APPEND _docs "${_created}.html")
+      doc_copybin(_depend_gp "${_cmd}.html" "DIR")
+      list(APPEND _docs "${_cmd}.html" "${_created}.html")
     else()
       message(STATUS "Sorry, but there is no directory ${TOP_SRC_DIR}/doc/${_cmd}.html to copy. Leave it out")
     endif()
@@ -360,7 +281,7 @@ foreach (_cmd "enblend" "enfuse")
     file(RELATIVE_PATH _tmp_created "${CMAKE_CURRENT_BINARY_DIR}" "${_created}.texi")
     add_custom_command(
       OUTPUT "${_created}.pdf"
-      COMMAND ${TEXI2DVI_EXE} ${TEXI2DVIFLAGS} "--pdf" "--batch" "--build=local" "${_tmp_created}"
+      COMMAND ${TEXI2DVI_EXE} ${TEXI2DVIFLAGS} "--dvipdf" "--batch" "--build=local" "${_tmp_created}"
       DEPENDS "${_created}.texi"
       ${_${_cmd}_TEXINFOS} ${_depend_gp}
       "${CMAKE_CURRENT_BINARY_DIR}/config-h.texi" ${_auxdepends}
