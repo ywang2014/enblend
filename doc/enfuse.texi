@@ -490,14 +490,32 @@ Depending on the output file format, Enfuse accepts different values
 for @var{COMPRESSION}.
 
 @table @asis
-@item @acronym{JPEG}
+@item @acronym{JPEG} format.
 @cindex @acronym{JPEG} compression
 @cindex compression, @acronym{JPEG}
-@var{COMPRESSION} is a @acronym{JPEG} quality level ranging from
-0--100.
 
-@item @acronym{TIFF}
-@var{COMPRESSION} is one of the keywords:
+The compression either is a literal integer or a keyword-option
+combination.
+
+@table @code
+@item @var{LEVEL}
+Set @acronym{JPEG} quality@tie{}@var{LEVEL}, where @var{LEVEL} is an
+integer that ranges from 0--100.
+
+@item jpeg[:@var{LEVEL}]
+Same as above; without the optional argument just switch on (standard)
+@acronym{JPEG} compression.
+
+@item jpeg-arith[:@var{LEVEL}]
+@cindex arithmetic @acronym{JPEG} compression
+@cindex compression, arithmetic @acronym{JPEG}
+Switch on arithmetic @acronym{JPEG} compression.  With optional
+argument set the arithmetic compression@tie{}@var{LEVEL}, where
+@var{LEVEL} is an integer that ranges from 0--100.
+@end table
+
+@item @acronym{TIF} format.
+Here, @var{COMPRESSION} is one of the keywords:
 
 @table @code
 @item none
@@ -510,6 +528,12 @@ Use the @sc{Deflate} compression scheme also called
 @acronym{ZIP}-in-@acronym{TIFF}.  @sc{Deflate} is a lossless data
 compression algorithm that uses a combination of the @acronym{LZ77}
 algorithm and @sc{Huffman} coding.
+
+@item jpeg[:@var{LEVEL}]
+@cindex compression, @acronym{JPEG}
+Use @acronym{JPEG} compression.  With optional argument set the
+compression@tie{}@var{LEVEL}, where @var{LEVEL} is an integer that
+ranges from 0--100.
 
 @item lzw
 @cindex @acronym{LZW} compression
@@ -524,7 +548,7 @@ Use @sc{PackBits} compression scheme.  @sc{PackBits} is a particular
 variant of run-length compression; it is lossless.
 @end table
 
-@item Any other format
+@item Any other format.
 Other formats do not accept a @var{COMPRESSION} setting.
 
 However, @uref{http://@/hci.iwr.uni-@/heidelberg.de/@/vigra/,

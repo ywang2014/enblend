@@ -258,6 +258,14 @@ next(iterator i)
 }
 
 
+/** Test whether s starts with p. */
+inline bool
+starts_with(const std::string& s, const std::string& p)
+{
+    return s.substr(0, p.length()) == p;
+}
+
+
 /** String tokenizer similar to strtok_r().
  *  In contrast to strtok_r this function returns an empty string for
  *  each pair of successive delimiters.  Function strtok_r skips them.

@@ -47,6 +47,11 @@ Unreleased.  Current line of development.
   Enblend and Enfuse write all masks and the final output image as
   before.
 
+- Both Enblend and Enfuse can write their output JPEG files with
+  arithmetic JPEG compression and TIFF files with JPEG compression, if
+  the underlying JPEG and TIFF libraries support these compression
+  schemes.
+
 
 ** Bug Fixes
 

@@ -370,8 +370,9 @@ void printUsageAndExit(const bool error = true) {
         "  --compression=COMPRESSION\n" <<
         "                         set compression of output image to COMPRESSION,\n" <<
         "                         where COMPRESSION is:\n" <<
-        "                         \"none\", \"packbits\", \"lzw\", \"deflate\" for TIFF files and\n" <<
-        "                         0 to 100 for JPEG files\n" <<
+        "                         \"deflate\", \"jpeg\", \"lzw\", \"none\", \"packbits\", for TIFF files and\n" <<
+        "                         0 to 100, or \"jpeg\", \"jpeg-arith\" for JPEG files,\n" <<
+        "                         where \"jpeg\" and \"jpeg-arith\" accept a compression level\n" <<
         "  --layer-selector=ALGORITHM\n" <<
         "                         set the layer selector ALGORITHM;\n" <<
         "                         default: \"" << LayerSelection.name() << "\"; available algorithms are:\n";
@@ -1170,15 +1171,41 @@ int process_options(int argc, char** argv)
                 boost::algorithm::to_upper(upper_opt);
                 if (upper_opt == "NONE") {
                     ;           // stick with default
-                } else if (upper_opt == "DEFLATE" || upper_opt == "LZW" || upper_opt == "PACKBITS" ||
-                           upper_opt.find_first_not_of("0123456789") == std::string::npos) {
+                } else if (upper_opt == "DEFLATE" || upper_opt == "LZW" || upper_opt == "PACKBITS") {
                     OutputCompression = upper_opt;
+                } else if (upper_opt.find_first_not_of("0123456789") == std::string::npos) {
+                    OutputCompression = "JPEG QUALITY=" + upper_opt;
+                } else if (enblend::starts_with(upper_opt, "JPEG") || enblend::starts_with(upper_opt, "JPEG-ARITH")) {
+                    const std::string::size_type delimiter_position = upper_opt.find_first_of(NUMERIC_OPTION_DELIMITERS);
+                    if (delimiter_position == std::string::npos) {
+                        if (upper_opt == "JPEG" || upper_opt == "JPEG-ARITH") {
+                            OutputCompression = upper_opt;
+                        } else {
+                            std::cerr << command << ": trailing garbage in JPEG compression \"" << optarg << "\"" << std::endl;
+                            failed = true;
+                        }
+                    } else {
+                        const std::string algorithm(upper_opt.substr(0, delimiter_position));
+                        if (algorithm == "JPEG" || algorithm == "JPEG-ARITH") {
+                            const std::string level(upper_opt.substr(delimiter_position + 1U));
+                            if (level.length() >= 1U && level.find_first_not_of("0123456789") == std::string::npos) {
+                                upper_opt.replace(delimiter_position, 1U, " QUALITY=");
+                                OutputCompression = upper_opt;
+                            } else {
+                                std::cerr << command << ": invalid JPEG compression level \"" << level << "\"" << std::endl;
+                                failed = true;
+                            }
+                        } else {
+                            std::cerr << command << ": unrecognized JPEG compression \"" << optarg << "\"" << std::endl;
+                            failed = true;
+                        }
+                    }
                 } else {
-                    std::cerr << command << ": unrecognized compression \"" << optarg << "\"" << endl;
+                    std::cerr << command << ": unrecognized compression \"" << optarg << "\"" << std::endl;
                     failed = true;
                 }
             } else {
-                std::cerr << command << ": option \"--compression\" requires an argument" << endl;
+                std::cerr << command << ": option \"--compression\" requires an argument" << std::endl;
                 failed = true;
             }
             optionSet.insert(CompressionOption);
